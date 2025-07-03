@@ -1,4 +1,3 @@
-
 # Streamlit Dashboard for Inventory Management
 
 import streamlit as st
@@ -52,11 +51,11 @@ if uploaded_file:
         sections = ['Finished Goods', 'Raw Materials', 'Work In Progress']
         tab_fg, tab_rm, tab_wip = st.tabs(sections)
 
-        def process_and_display(tab, section_name):
+        def process_and_display(tab, section_name, suffix):
             with tab:
                 st.subheader(f"🔍 {section_name} Overview")
                 sec_df = df[df['Section'] == section_name].copy()
-
+                
                 # Derived columns
                 today = pd.to_datetime(end_date)
                 sec_df['Remaining Qty'] = sec_df['Inward Qty'] - sec_df['Sales Qty'].fillna(0)
@@ -73,11 +72,11 @@ if uploaded_file:
 
                 sec_df['Status'] = sec_df.apply(get_status, axis=1)
 
-                # Filters
-                with st.expander("🔧 Filters"):
-                    unit_filter = st.multiselect("Select Unit", sec_df['Unit'].unique(), default=sec_df['Unit'].unique())
-                    product_filter = st.multiselect("Select Product", sec_df['Product Name'].unique(), default=sec_df['Product Name'].unique())
-                    status_filter = st.multiselect("Select Status", sec_df['Status'].unique(), default=sec_df['Status'].unique())
+                # Filters with unique keys
+                with st.expander("🔧 Filters" + f" ({suffix})"):
+                    unit_filter = st.multiselect(f"Select Unit ({suffix})", sec_df['Unit'].unique(), default=sec_df['Unit'].unique(), key=f"unit_{suffix}")
+                    product_filter = st.multiselect(f"Select Product ({suffix})", sec_df['Product Name'].unique(), default=sec_df['Product Name'].unique(), key=f"product_{suffix}")
+                    status_filter = st.multiselect(f"Select Status ({suffix})", sec_df['Status'].unique(), default=sec_df['Status'].unique(), key=f"status_{suffix}")
 
                 sec_df = sec_df[
                     sec_df['Unit'].isin(unit_filter) &
@@ -100,9 +99,9 @@ if uploaded_file:
 
                 # Export Option
                 csv = sec_df.to_csv(index=False).encode('utf-8')
-                st.download_button("📥 Download Filtered Data", data=csv, file_name=f"{section_name}_filtered.csv", mime='text/csv')
+                st.download_button("📥 Download Filtered Data", data=csv, file_name=f"{section_name}_filtered.csv", mime='text/csv', key=f"download_{suffix}")
 
         # Display each tab
-        process_and_display(tab_fg, 'Finished Goods')
-        process_and_display(tab_rm, 'Raw Materials')
-        process_and_display(tab_wip, 'Work In Progress')
+        process_and_display(tab_fg, 'Finished Goods', 'fg')
+        process_and_display(tab_rm, 'Raw Materials', 'rm')
+        process_and_display(tab_wip, 'Work In Progress', 'wip')
