@@ -1,76 +1,46 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="📦 Inventory Movement Tracker", layout="wide")
-st.title("📦 Inventory Movement Tracker – Unit 1")
+st.set_page_config(page_title="📦 Inventory Stock Tracking System", layout="wide")
+st.title("📦 Inventory Stock Tracking System – Complete View")
 
-uploaded_file = st.file_uploader("Upload Stock Summary File (.xlsx or .csv)", type=["xlsx", "csv"])
-
-def clean_number(value):
-    if isinstance(value, str):
-        parts = value.split()
-        try:
-            return float(parts[0].replace(",", ""))
-        except:
-            return 0.0
-    return value if pd.notnull(value) else 0.0
+uploaded_file = st.file_uploader("📤 Upload Cleaned Inventory CSV", type=["csv"])
 
 if uploaded_file:
     try:
-        # === CASE 1: CSV ===
-        if uploaded_file.name.endswith(".csv"):
-            df_raw = pd.read_csv(uploaded_file, skiprows=1)
-            df_cleaned = df_raw.iloc[:, [0, 1, 5, 9, 13, 15, 16]].copy()
-            df_cleaned.columns = [
-                "Product Name", "Opening Qty", "Inward Qty", "Outward Qty",
-                "Closing Qty", "Closing Rate", "Total Value"
-            ]
-            for col in ["Opening Qty", "Inward Qty", "Outward Qty", "Closing Qty", "Closing Rate", "Total Value"]:
-                df_cleaned[col] = df_cleaned[col].apply(clean_number)
+        df = pd.read_csv(uploaded_file)
 
-        # === CASE 2: XLSX ===
-        else:
-            df_excel = pd.read_excel(uploaded_file, sheet_name="Stock Category Summary", engine="openpyxl")
-            df_cleaned = df_excel.iloc[15:, [0, 1, 5, 9, 13, 14, 16]].copy()
-            df_cleaned.columns = [
-                "Product Name", "Opening Qty", "Inward Qty", "Outward Qty",
-                "Closing Qty", "Closing Rate", "Total Value"
-            ]
-            for col in ["Opening Qty", "Inward Qty", "Outward Qty", "Closing Qty", "Closing Rate", "Total Value"]:
-                df_cleaned[col] = pd.to_numeric(df_cleaned[col], errors="coerce").fillna(0)
-
-        # Add Movement Status Column
-        df_cleaned["Movement Status"] = df_cleaned.apply(
-            lambda row: "Moved" if (row["Inward Qty"] > 0 or row["Outward Qty"] > 0) else "Not Moved", axis=1
+        # Sidebar filters
+        st.sidebar.header("🔎 Filter Options")
+        search_term = st.sidebar.text_input("🔍 Search Product Name")
+        move_filter = st.sidebar.multiselect(
+            "📦 Filter by Movement Status",
+            options=["Moved", "Not Moved"],
+            default=["Moved", "Not Moved"]
         )
 
-        # === SIDEBAR FILTERS ===
-        st.sidebar.header("🔎 Filters")
-        search = st.sidebar.text_input("Search Product Name")
-        movement_filter = st.sidebar.radio("Select Movement Type", ["All", "Moved", "Not Moved"], index=0)
+        filtered_df = df[df["Movement Status"].isin(move_filter)]
 
-        # Apply filters
-        filtered = df_cleaned.copy()
-        if movement_filter != "All":
-            filtered = filtered[filtered["Movement Status"] == movement_filter]
+        if search_term:
+            filtered_df = filtered_df[filtered_df["Product Name"].str.contains(search_term, case=False)]
 
-        if search:
-            filtered = filtered[filtered["Product Name"].str.contains(search, case=False)]
-
-        # === SUMMARY ===
-        total_moved = df_cleaned[df_cleaned["Movement Status"] == "Moved"]["Total Value"].sum()
-        total_not_moved = df_cleaned[df_cleaned["Movement Status"] == "Not Moved"]["Total Value"].sum()
-
+        # Metrics
         st.markdown("### 📊 Summary")
-        col1, col2 = st.columns(2)
-        col1.metric("💰 Total Sales – Moved", f"₹ {total_moved:,.2f}")
-        col2.metric("🚫 Total Sales – Not Moved", f"₹ {total_not_moved:,.2f}")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("📥 Total Inward Value", f"₹ {filtered_df['Inward Value'].sum():,.2f}")
+        col2.metric("📤 Total Outward Value", f"₹ {filtered_df['Outward Value'].sum():,.2f}")
+        col3.metric("📦 Closing Value", f"₹ {filtered_df['Closing Value'].sum():,.2f}")
 
-        # === TABLE ===
-        st.markdown("### 📋 Inventory Data")
-        st.dataframe(filtered, use_container_width=True)
+        # Table
+        st.markdown("### 📋 Inventory Details")
+        st.dataframe(filtered_df, use_container_width=True)
+
+        # Download filtered CSV
+        csv_download = filtered_df.to_csv(index=False).encode("utf-8")
+        st.download_button("📥 Download Filtered CSV", data=csv_download, file_name="filtered_inventory.csv", mime="text/csv")
 
     except Exception as e:
-        st.error(f"❌ Error reading file: {e}")
+        st.error(f"❌ Error processing file: {e}")
+
 else:
-    st.info("📤 Please upload a `.csv` or `.xlsx` stock summary file.")
+    st.info("Please upload the `cleaned_inventory_complete.csv` file to get started.")
