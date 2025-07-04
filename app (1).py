@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 st.set_page_config(page_title="📦 Inventory Stock Tracker", layout="wide")
-st.title("📦 Inventory Stock Tracking System – Grand Total View")
+st.title("📦 Inventory Stock Tracking System – Filtered View")
 
 uploaded_file = st.file_uploader("📤 Upload Cleaned Inventory CSV", type=["csv"])
 
@@ -10,7 +10,7 @@ if uploaded_file:
     try:
         df = pd.read_csv(uploaded_file)
 
-        # Sidebar filters
+        # === Sidebar filters ===
         st.sidebar.header("🔎 Filter Options")
         search_term = st.sidebar.text_input("🔍 Search Product Name")
         move_filter = st.sidebar.multiselect(
@@ -24,26 +24,26 @@ if uploaded_file:
         if search_term:
             filtered_df = filtered_df[filtered_df["Product Name"].str.contains(search_term, case=False)]
 
-        # === Grand Totals ===
-        st.markdown("### 📊 Grand Totals")
-        total_opening = df["Opening Value"].sum()
-        total_inward = df["Inward Value"].sum()
-        total_outward = df["Outward Value"].sum()
-        total_closing = df["Closing Value"].sum()
+        # === Filtered Grand Totals ===
+        st.markdown("### 📊 Grand Totals (Filtered)")
+        total_opening = filtered_df["Opening Value"].sum()
+        total_inward = filtered_df["Inward Value"].sum()
+        total_outward = filtered_df["Outward Value"].sum()
+        total_closing = filtered_df["Closing Value"].sum()
 
         col1, col2 = st.columns(2)
         with col1:
-            st.metric("🏁 Opening Value (All)", f"₹ {total_opening:,.2f}")
-            st.metric("📥 Inward Value (All)", f"₹ {total_inward:,.2f}")
+            st.metric("🏁 Opening Value", f"₹ {total_opening:,.2f}")
+            st.metric("📥 Inward Value", f"₹ {total_inward:,.2f}")
         with col2:
-            st.metric("📤 Outward Value (All)", f"₹ {total_outward:,.2f}")
-            st.metric("📦 Closing Value (All)", f"₹ {total_closing:,.2f}")
+            st.metric("📤 Outward Value", f"₹ {total_outward:,.2f}")
+            st.metric("📦 Closing Value", f"₹ {total_closing:,.2f}")
 
-        # === Filtered Table ===
-        st.markdown("### 📋 Inventory Details (Filtered)")
+        # === Table ===
+        st.markdown("### 📋 Inventory Details")
         st.dataframe(filtered_df, use_container_width=True)
 
-        # Download filtered CSV
+        # === Download filtered CSV ===
         csv_download = filtered_df.to_csv(index=False).encode("utf-8")
         st.download_button("📥 Download Filtered CSV", data=csv_download, file_name="filtered_inventory.csv", mime="text/csv")
 
@@ -51,4 +51,5 @@ if uploaded_file:
         st.error(f"❌ Error: {e}")
 
 else:
-    st.info("📤 Please upload the `cleaned_inventory_complete.csv` file to get started.")
+    st.info("📤 Please upload the `cleaned_inventory_complete.csv` file to begin.")
+
