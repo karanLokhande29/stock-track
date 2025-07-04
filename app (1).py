@@ -4,13 +4,21 @@ import pandas as pd
 st.set_page_config(page_title="📦 Inventory Movement Tracker", layout="wide")
 st.title("📦 Inventory Movement Tracker – Unit 1")
 
-uploaded_file = st.file_uploader("Upload Stock Summary Excel File", type=["xlsx"])
+uploaded_file = st.file_uploader("Upload Stock Summary File (.xlsx or .csv)", type=["xlsx", "csv"])
 
 if uploaded_file:
     try:
-        df = pd.read_excel(uploaded_file, sheet_name="Stock Category Summary")
+        # Load the file
+        if uploaded_file.name.endswith(".csv"):
+            df = pd.read_csv(uploaded_file)
+        else:
+            try:
+                df = pd.read_excel(uploaded_file, sheet_name="Stock Category Summary", engine="openpyxl")
+            except ImportError:
+                st.error("❌ Excel support requires 'openpyxl'. Please use a CSV file or install openpyxl.")
+                st.stop()
 
-        # Extract relevant columns (based on known structure)
+        # Extract relevant columns (assumes same structure in both CSV and Excel)
         data = df.iloc[15:, [0, 1, 5, 9, 13, 14, 16]].copy()
         data.columns = [
             "Product Name", "Opening Qty", "Inward Qty", "Outward Qty",
@@ -32,14 +40,11 @@ if uploaded_file:
         search = st.sidebar.text_input("Search Product Name")
         status_filter = st.sidebar.multiselect("Movement Status", ["Moved", "Not Moved"], default=["Moved", "Not Moved"])
 
-        filtered_data = data[
-            data["Movement Status"].isin(status_filter)
-        ]
-
+        filtered_data = data[data["Movement Status"].isin(status_filter)]
         if search:
             filtered_data = filtered_data[filtered_data["Product Name"].str.contains(search, case=False)]
 
-        # Metrics
+        # Summary
         total_moved = filtered_data[filtered_data["Movement Status"] == "Moved"]["Total Value"].sum()
         total_not_moved = filtered_data[filtered_data["Movement Status"] == "Not Moved"]["Total Value"].sum()
 
@@ -48,17 +53,16 @@ if uploaded_file:
         col1.metric("💰 Total Value – Moved", f"₹ {total_moved:,.2f}")
         col2.metric("🚫 Total Value – Not Moved", f"₹ {total_not_moved:,.2f}")
 
-        # Apply row styling
+        # Row highlighting
         def color_row(row):
             color = "background-color: #ffcccc" if row["Movement Status"] == "Not Moved" else "background-color: #ccffcc"
             return [color] * len(row)
 
         styled_df = filtered_data.style.apply(color_row, axis=1)
-
         st.markdown("### 📋 Detailed Inventory")
         st.dataframe(styled_df, use_container_width=True)
 
     except Exception as e:
         st.error(f"❌ Error reading file: {e}")
 else:
-    st.info("📤 Please upload a valid stock summary Excel file.")
+    st.info("📤 Please upload a stock summary file (.csv or .xlsx).")
